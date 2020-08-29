@@ -1,12 +1,14 @@
 #define MAX7219DIN 4
 #define MAX7219CS 5
 #define MAX7219CLK 6
+#define PUSH_BUTTON 13
+#define PWM_OUT_PIN 3
 
-short ONE_DAY = 1440;
-short RESET_TIME_THRESHOLD = 4000;
+const unsigned long ONE_DAY = 10000;
+const short RESET_TIME_THRESHOLD = 4000;
 
 byte foodSize = 1;
-int lastFeedTime = -1;
+unsigned long lastFeedTime = 0;
 
 unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
@@ -28,18 +30,22 @@ void setup() {
   MAX7219senddata(6,15);
   MAX7219senddata(7,15);
   MAX7219senddata(8,foodSize);
+  feedFish();
 }
 
 void loop() {
   displayNextFeed();
   checkButton();
+  if ((millis() - lastFeedTime) >= ONE_DAY) {
+    feedFish();
+  }
 }
 
 void displayNextFeed() {
-  if (lastFeedTime == -1) {
+  if (lastFeedTime == 0) {
     displayNumber(0);
   } else {
-    int nextFeedCountdown = ONE_DAY - (millis() - lastFeedTime)/1000;
+    unsigned int nextFeedCountdown = (ONE_DAY - (millis() - lastFeedTime))/1000;
     displayNumber(nextFeedCountdown);
   }
 }
@@ -54,7 +60,7 @@ void displayNumber(unsigned long t) {
 
 void checkButton() {
   int LOOP_TIME = millis();
-  int reading = digitalRead(2);
+  int reading = digitalRead(PUSH_BUTTON);
   if (reading != lastButtonState) {
     lastDebounceTime = LOOP_TIME;
   }
@@ -74,13 +80,18 @@ void checkButton() {
         endPressed = LOOP_TIME;
         holdTime = endPressed - startPressed;
         if (holdTime >= RESET_TIME_THRESHOLD) {
-          lastFeedTime = LOOP_TIME; // set motor threshold high
+          feedFish();
         }
       }
     }
   }
   
   lastButtonState = reading;
+}
+
+void feedFish() {
+  lastFeedTime = millis();
+  analogWrite(PWM_OUT_PIN, 127)
 }
 
 void stepFoodSize() {
