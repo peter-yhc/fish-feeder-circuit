@@ -2,8 +2,6 @@
 #define MAX7219CS 5
 #define MAX7219CLK 6
 
-boolean DEBUG = true;
-
 short ONE_DAY = 1440;
 short RESET_TIME_THRESHOLD = 4000;
 
