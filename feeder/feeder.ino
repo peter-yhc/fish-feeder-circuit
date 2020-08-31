@@ -8,7 +8,7 @@
 const unsigned long ONE_DAY = 10000;
 const short RESET_TIME_THRESHOLD = 4000;
 
-byte portionCounter = 1;
+byte portionsRequired = 4;
 byte portionsFed = 0;
 
 unsigned long lastFeedTime = 0;
@@ -40,7 +40,7 @@ void setup() {
   MAX7219senddata(5,15);
   MAX7219senddata(6,15);
   MAX7219senddata(7,15);
-  MAX7219senddata(8,portionCounter);
+  MAX7219senddata(8,portionsRequired);
 }
 
 void loop() {
@@ -54,6 +54,7 @@ void loop() {
       checkFeedOffSwitch();
     }
   }
+  checkFeedOffSwitch();
 }
 
 void displayNextFeed() {
@@ -95,7 +96,7 @@ void checkButton() {
         if (holdTimePb >= RESET_TIME_THRESHOLD) {
           feedFish();
         } else if (holdTimePb <= 1000) {
-          increasePortionCounter();
+          increasePortionsRequired();
         }
       }
     }
@@ -114,28 +115,31 @@ void checkFeedOffSwitch() {
     if (reading != stateSw) {
       stateSw = reading;
       if (stateSw == HIGH) {
-        analogWrite(PWM_OUT_PIN, 0);
-        feeding = false;
+        portionsFed++;
+        if (portionsFed >= portionsRequired) {
+          analogWrite(PWM_OUT_PIN, 0);
+          feeding = false;
+          portionsFed = 0;
+        }
       }
     }
   }
+  lastStateSw = reading;
 }
 
 void feedFish() {
   lastFeedTime = millis();
   feeding = true;
-  Serial.print(lastFeedTime);
-  Serial.println(" feeding fish");
   analogWrite(PWM_OUT_PIN, 127);
 }
 
-void increasePortionCounter() {
-  portionCounter++;
-  portionCounter = portionCounter % 6;
-  if (portionCounter == 0) {
-    portionCounter = 1;
+void increasePortionsRequired() {
+  portionsRequired++;
+  portionsRequired = portionsRequired % 6;
+  if (portionsRequired == 0) {
+    portionsRequired = 1;
   }
-  MAX7219senddata(8,portionCounter);
+  MAX7219senddata(8,portionsRequired);
 }
 
 void MAX7219brightness(byte b){  //0-15 is range high nybble is ignored
