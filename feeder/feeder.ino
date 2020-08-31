@@ -2,22 +2,33 @@
 #define MAX7219CS 5
 #define MAX7219CLK 6
 #define PUSH_BUTTON 13
+#define FEED_DETECTION_SWITCH 2
 #define PWM_OUT_PIN 3
 
 const unsigned long ONE_DAY = 10000;
 const short RESET_TIME_THRESHOLD = 4000;
 
-byte foodSize = 1;
+byte portionCounter = 1;
+byte portionsFed = 0;
+
 unsigned long lastFeedTime = 0;
-
-unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
 unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
+boolean feeding = false;
 
-int buttonState;             // the current reading from the input pin
-int lastButtonState = LOW;   // the previous reading from the input pin
-int startPressed = 0;    // the moment the button was pressed
-int endPressed = 0;      // the moment the button was released
-int holdTime = 0;        // how long the button was hold
+/* Variables for Push Button */
+int statePb;                            // the current reading from the input pin
+int lastStatePb = LOW;                  // the previous reading from the input pin
+int statePressedPb = 0;                 // the moment the button was pressed
+int endPressedPb = 0;                   // the moment the button was released
+int holdTimePb = 0;                     // how long the button was hold
+unsigned long lastDebounceTimePb = 0;   // the last time the output pin was toggled
+/* End */
+
+/* Variables for Motor Switch */
+int stateSw;
+int lastStateSw = LOW;
+unsigned long lastDebounceTimeSw = 0;
+/* End */
 
 void setup() {
   Serial.begin(9600);
@@ -29,15 +40,19 @@ void setup() {
   MAX7219senddata(5,15);
   MAX7219senddata(6,15);
   MAX7219senddata(7,15);
-  MAX7219senddata(8,foodSize);
-  feedFish();
+  MAX7219senddata(8,portionCounter);
 }
 
 void loop() {
   displayNextFeed();
   checkButton();
-  if ((millis() - lastFeedTime) >= ONE_DAY) {
-    feedFish();
+  if (lastFeedTime != 0) {
+    if ((millis() - lastFeedTime) >= ONE_DAY) {
+      feedFish();
+    }
+    if (feeding) {
+      checkFeedOffSwitch();
+    }
   }
 }
 
@@ -61,46 +76,66 @@ void displayNumber(unsigned long t) {
 void checkButton() {
   int LOOP_TIME = millis();
   int reading = digitalRead(PUSH_BUTTON);
-  if (reading != lastButtonState) {
-    lastDebounceTime = LOOP_TIME;
+  if (reading != lastStatePb) {
+    lastDebounceTimePb = millis();
   }
   
-  if ((LOOP_TIME - lastDebounceTime) > debounceDelay) {
+  if ((LOOP_TIME - lastDebounceTimePb) > debounceDelay) {
     // whatever the reading is at, it's been there for longer than the debounce
-    // delay, so take it as the actual current state:
+    // delay, so take it as the actual current statePb:
   
-    // if the button state has changed:
-    if (reading != buttonState) {
-      buttonState = reading;
-
-      if (buttonState == HIGH) {
-        stepFoodSize();
-        startPressed = LOOP_TIME;
+    // if the button statePb has changed:
+    if (reading != statePb) {
+      statePb = reading;
+      if (statePb == HIGH) {
+        statePressedPb = LOOP_TIME;
       } else {
-        endPressed = LOOP_TIME;
-        holdTime = endPressed - startPressed;
-        if (holdTime >= RESET_TIME_THRESHOLD) {
+        endPressedPb = LOOP_TIME;
+        holdTimePb = endPressedPb - statePressedPb;
+        if (holdTimePb >= RESET_TIME_THRESHOLD) {
           feedFish();
+        } else if (holdTimePb <= 1000) {
+          increasePortionCounter();
         }
       }
     }
   }
-  
-  lastButtonState = reading;
+  lastStatePb = reading;
+}
+
+void checkFeedOffSwitch() {
+  int LOOP_TIME = millis();
+  int reading = digitalRead(FEED_DETECTION_SWITCH);
+  if (reading != lastStateSw) {
+    lastDebounceTimeSw = millis();
+  }
+
+  if (LOOP_TIME - lastDebounceTimeSw > debounceDelay) {
+    if (reading != stateSw) {
+      stateSw = reading;
+      if (stateSw == HIGH) {
+        analogWrite(PWM_OUT_PIN, 0);
+        feeding = false;
+      }
+    }
+  }
 }
 
 void feedFish() {
   lastFeedTime = millis();
-  analogWrite(PWM_OUT_PIN, 127)
+  feeding = true;
+  Serial.print(lastFeedTime);
+  Serial.println(" feeding fish");
+  analogWrite(PWM_OUT_PIN, 127);
 }
 
-void stepFoodSize() {
-  foodSize++;
-  foodSize = foodSize % 6;
-  if (foodSize == 0) {
-    foodSize = 1;
+void increasePortionCounter() {
+  portionCounter++;
+  portionCounter = portionCounter % 6;
+  if (portionCounter == 0) {
+    portionCounter = 1;
   }
-  MAX7219senddata(8,foodSize);
+  MAX7219senddata(8,portionCounter);
 }
 
 void MAX7219brightness(byte b){  //0-15 is range high nybble is ignored
