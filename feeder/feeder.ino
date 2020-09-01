@@ -4,8 +4,9 @@
 #define PUSH_BUTTON 13
 #define FEED_DETECTION_SWITCH 2
 #define PWM_OUT_PIN 3
+#define PWM_SPEED 100
 
-const unsigned long ONE_DAY = 10000;
+const unsigned long ONE_DAY = 30000;
 const short RESET_TIME_THRESHOLD = 4000;
 
 byte portionsRequired = 4;
@@ -130,7 +131,7 @@ void checkFeedOffSwitch() {
 void feedFish() {
   lastFeedTime = millis();
   feeding = true;
-  analogWrite(PWM_OUT_PIN, 127);
+  analogWrite(PWM_OUT_PIN, PWM_SPEED);
 }
 
 void increasePortionsRequired() {
