@@ -1,6 +1,6 @@
-#define MAX7219DIN 4
-#define MAX7219CS 5
-#define MAX7219CLK 6
+#define MAX7219DIN 5
+#define MAX7219CS 6
+#define MAX7219CLK 7
 #define PUSH_BUTTON 13
 #define FEED_DETECTION_SWITCH 2
 #define PWM_OUT_PIN 3
