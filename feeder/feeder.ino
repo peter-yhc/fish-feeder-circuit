@@ -1,13 +1,14 @@
-#define MAX7219DIN 5
+#define MAX7219CLK 5
 #define MAX7219CS 6
-#define MAX7219CLK 7
+#define MAX7219DIN 7
 #define PUSH_BUTTON 13
 #define FEED_DETECTION_SWITCH 2
 #define PWM_OUT_PIN 3
-#define PWM_SPEED 100
+#define PWM_SPEED 75
 
-const unsigned long ONE_DAY = 30000;
+const unsigned long ONE_DAY = 20000;
 const short RESET_TIME_THRESHOLD = 4000;
+const short FEEDBACK_SWITCH_THRESHOLD = 100;
 
 byte portionsRequired = 4;
 byte portionsFed = 0;
@@ -19,14 +20,16 @@ boolean feeding = false;
 /* Variables for Push Button */
 int statePb;                            // the current reading from the input pin
 int lastStatePb = LOW;                  // the previous reading from the input pin
-int statePressedPb = 0;                 // the moment the button was pressed
+int startPressedPb = 0;                 // the moment the button was pressed
 int endPressedPb = 0;                   // the moment the button was released
-int holdTimePb = 0;                     // how long the button was hold
 unsigned long lastDebounceTimePb = 0;   // the last time the output pin was toggled
 /* End */
 
 /* Variables for Motor Switch */
 int stateSw;
+int startPressedSw = 0;
+int endPressedSw = 0;
+
 int lastStateSw = LOW;
 unsigned long lastDebounceTimeSw = 0;
 /* End */
@@ -90,10 +93,10 @@ void checkButton() {
     if (reading != statePb) {
       statePb = reading;
       if (statePb == HIGH) {
-        statePressedPb = LOOP_TIME;
+        startPressedPb = LOOP_TIME;
       } else {
         endPressedPb = LOOP_TIME;
-        holdTimePb = endPressedPb - statePressedPb;
+        int holdTimePb = endPressedPb - startPressedPb;
         if (holdTimePb >= RESET_TIME_THRESHOLD) {
           feedFish();
         } else if (holdTimePb <= 1000) {
@@ -116,11 +119,16 @@ void checkFeedOffSwitch() {
     if (reading != stateSw) {
       stateSw = reading;
       if (stateSw == HIGH) {
-        portionsFed++;
-        if (portionsFed >= portionsRequired) {
-          analogWrite(PWM_OUT_PIN, 0);
-          feeding = false;
-          portionsFed = 0;
+        startPressedSw = LOOP_TIME;
+      } else {
+        endPressedSw = LOOP_TIME;
+        if (endPressedSw - startPressedSw >= FEEDBACK_SWITCH_THRESHOLD) {
+          portionsFed++;
+          if (portionsFed >= portionsRequired) {
+            analogWrite(PWM_OUT_PIN, 0);
+            feeding = false;
+            portionsFed = 0;
+          }
         }
       }
     }
