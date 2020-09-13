@@ -45,7 +45,6 @@ void setup() {
   MAX7219senddata(6,15);
   MAX7219senddata(7,15);
   MAX7219senddata(8,portionsRequired);
-  feedFish();
 }
 
 void loop() {
