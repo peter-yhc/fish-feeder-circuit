@@ -4,13 +4,13 @@
 #define PUSH_BUTTON 13
 #define FEED_DETECTION_SWITCH 2
 #define PWM_OUT_PIN 3
-#define PWM_SPEED 75
+#define PWM_SPEED 160
 
-const unsigned long ONE_DAY = 20000;
-const short RESET_TIME_THRESHOLD = 4000;
-const short FEEDBACK_SWITCH_THRESHOLD = 100;
+const unsigned long ONE_DAY = 84375000; // in milliseconds
+const short RESET_TIME_THRESHOLD = 4000; // hold button for > 4 seconds
+const short FEEDBACK_SWITCH_THRESHOLD = 100; // hold button for > 0.1 seconds
 
-byte portionsRequired = 4;
+byte portionsRequired = 1;
 byte portionsFed = 0;
 
 unsigned long lastFeedTime = 0;
@@ -45,6 +45,7 @@ void setup() {
   MAX7219senddata(6,15);
   MAX7219senddata(7,15);
   MAX7219senddata(8,portionsRequired);
+  feedFish();
 }
 
 void loop() {
@@ -65,7 +66,7 @@ void displayNextFeed() {
   if (lastFeedTime == 0) {
     displayNumber(0);
   } else {
-    unsigned int nextFeedCountdown = (ONE_DAY - (millis() - lastFeedTime))/1000;
+    unsigned int nextFeedCountdown = (ONE_DAY - (millis() - lastFeedTime))/60000 * 1.024; // display in real minutes
     displayNumber(nextFeedCountdown);
   }
 }
